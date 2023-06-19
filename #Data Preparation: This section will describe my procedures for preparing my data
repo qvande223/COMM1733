@@ -1,0 +1,59 @@
+#Data Preparation: This section will describe my procedures for preparing my data
+
+# Import necessary libraries
+import pandas as pd
+import numpy as np
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.utils import resample
+from nltk.corpus import stopwords
+import string
+import re
+from datetime import datetime
+
+# Load the data
+business_data = pd.read_csv('yelp_business_data.csv')
+review_data = pd.read_csv('yelp_review_data.csv')
+
+# Merge the two dataframes based on 'business_id'
+data = pd.merge(business_data, review_data, on='business_id')
+
+# Filter data to contain only restaurant businesses in California
+data = data[(data['categories'].str.contains('Restaurants', case=False, na=False)) & (data['state'] == 'CA')]
+
+# Convert 'date' to datetime and keep only reviews from the last 10 years
+data['date'] = pd.to_datetime(data['date'])
+date_cutoff = datetime.today() - pd.DateOffset(years=10)
+data = data[data['date'] > date_cutoff]
+
+# Removing potential fake reviews can be complex, placeholder for anomaly detection code
+# ...
+
+# Define a function to clean text data
+def clean_text(text):
+    text = text.lower()  # Convert to lowercase
+    text = re.sub('['+string.punctuation+']', '', text)  # Remove punctuation
+    text = ' '.join(word for word in text.split() if word not in stopwords.words('english'))  # Remove stopwords
+    return text
+
+# Apply the function to the 'text' column
+data['text'] = data['text'].apply(clean_text)
+
+# Transform the 'text' column into numerical form
+vectorizer = TfidfVectorizer()
+data['text'] = vectorizer.fit_transform(data['text'])
+
+# Handle imbalances in sentiments
+positive = data[data['sentiment'] == 'positive']
+negative = data[data['sentiment'] == 'negative']
+
+# Upsample minority class
+negative_upsampled = resample(negative, replace=True, n_samples=len(positive), random_state=123)
+
+# Combine majority class with upsampled minority class
+data = pd.concat([positive, negative_upsampled])
+
+# Reset index
+data.reset_index(drop=True, inplace=True)
+
+# Save the cleaned and preprocessed data
+data.to_csv('cleaned_yelp_data.csv', index=False)
