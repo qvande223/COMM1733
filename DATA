@@ -1,0 +1,30 @@
+#Data: This section will describe my procedures for collecting my data
+
+import pandas as pd
+import json
+
+# Load business data
+with open('yelp_academic_dataset_business.json', 'r') as f:
+    businesses = [json.loads(line) for line in f]
+
+# Convert to DataFrame
+business_df = pd.DataFrame(businesses)
+
+# Filter the required columns
+business_df = business_df[['business_id', 'stars']]
+
+# Save the DataFrame to a CSV file
+business_df.to_csv('business_data.csv', index=False)
+
+# Load review data
+with open('yelp_academic_dataset_review.json', 'r') as f:
+    reviews = [json.loads(line) for line in f]
+
+# Convert to DataFrame
+review_df = pd.DataFrame(reviews)
+
+# Filter the required columns
+review_df = review_df[['business_id', 'text', 'useful', 'funny', 'cool']]
+
+# Save the DataFrame to a CSV file
+review_df.to_csv('review_data.csv', index=False)
