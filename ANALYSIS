@@ -1,0 +1,58 @@
+
+#Analysis: This section will describe my procedures for preparing my data
+#Import necessary Libraries
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from textblob import TextBlob
+import seaborn as sns
+from scipy import stats
+import statsmodels.api as sm
+from pyod.models.knn import KNN
+from sklearn import preprocessing
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LinearRegression
+
+#Assuming df is your dataframe and 'text' is your review column
+df = pd.read_csv('yelp_reviews.csv') # Your actual dataframe
+
+#Sentiment Analysis
+df['polarity'] = df['text'].map(lambda text: TextBlob(text).sentiment.polarity)
+df['sentiment'] = df['polarity'].map(lambda pol: '+' if pol > 0 else '-')
+
+#Correlation Analysis
+#Encoding sentiment as binary for point-biserial correlation
+le = preprocessing.LabelEncoder()
+df['sentiment_encoded'] = le.fit_transform(df['sentiment'])
+correlation_matrix = df[['sentiment_encoded', 'rating', 'interaction']].corr()
+
+#Print correlation
+print(correlation_matrix)
+
+#Regression Analysis
+X = df[['sentiment_encoded', 'rating']] # features
+Y = df['interaction'] # target
+
+X_train, X_test, y_train, y_test = train_test_split(X, Y, test_size=0.2, random_state=0)
+
+model = LinearRegression().fit(X_train, y_train)
+y_pred = model.predict(X_test)
+
+#Print model summary
+print(sm.OLS(y_test, y_pred).fit().summary())
+
+#Anomaly detection
+clf = KNN(contamination=0.02) #0.02 is the percentage of outliers we suspect
+clf.fit(df[['sentiment_encoded', 'rating', 'interaction']])
+
+#Get the prediction labels of the training data
+y_train_pred = clf.labels_ 
+
+#Outlier scores
+y_train_scores = clf.decision_scores_ 
+
+#Print the outlier prediction
+print(y_train_pred)
+
+#Remove outliers from dataframe
+df = df[y_train_pred == 0]
